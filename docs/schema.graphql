@@ -1,0 +1,196 @@
+"""
+Justice Knowledge Graph — GraphQL Schema
+
+Provides typed access to the knowledge graph containing
+statutes, procedures, case types, jurisdictions, courts,
+and resources.
+"""
+
+# --- Node Types ---
+
+"A legal statute or law"
+type Statute {
+  id: ID!
+  title: String!
+  code: String!
+  section: String!
+  text: String!
+  effectiveDate: DateTime!
+  repealDate: DateTime
+  version: Int!
+  jurisdictionId: ID!
+  jurisdiction: Jurisdiction
+  references: [Statute!]!
+  referencedBy: [Statute!]!
+  supersedes: Statute
+  supersededBy: Statute
+  procedures: [Procedure!]!
+}
+
+"A legal procedure (sequence of steps in a legal process)"
+type Procedure {
+  id: ID!
+  name: String!
+  description: String!
+  steps: [String!]!
+  timelineDays: Int
+  caseTypeId: ID!
+  jurisdictionId: ID!
+  caseType: CaseType
+  jurisdiction: Jurisdiction
+  requiredStatutes: [Statute!]!
+}
+
+"A type of legal case"
+type CaseType {
+  id: ID!
+  name: String!
+  category: String!
+  description: String
+  aliases: [String!]!
+  procedures: [Procedure!]!
+  resources: [Resource!]!
+}
+
+"A geographic or political jurisdiction"
+type Jurisdiction {
+  id: ID!
+  name: String!
+  level: JurisdictionLevel!
+  state: String
+  fipsCode: String
+  parentId: ID
+  parent: Jurisdiction
+  children: [Jurisdiction!]!
+  statutes: [Statute!]!
+  courts: [Court!]!
+}
+
+"A court within a jurisdiction"
+type Court {
+  id: ID!
+  name: String!
+  level: String!
+  address: String
+  phone: String
+  jurisdictionId: ID!
+  jurisdiction: Jurisdiction
+  caseTypes: [CaseType!]!
+}
+
+"A legal resource or service provider"
+type Resource {
+  id: ID!
+  name: String!
+  type: String!
+  url: String
+  phone: String
+  address: String
+  jurisdictions: [Jurisdiction!]!
+  caseTypes: [CaseType!]!
+}
+
+# --- Enums ---
+
+enum JurisdictionLevel {
+  FEDERAL
+  STATE
+  COUNTY
+  CITY
+}
+
+# --- Query Result Types ---
+
+"Result of a graph traversal or search"
+type QueryResult {
+  nodes: [GraphNode!]!
+  edges: [GraphEdge!]!
+  totalCount: Int!
+  hasMore: Boolean!
+}
+
+"Generic graph node"
+type GraphNode {
+  id: ID!
+  type: String!
+  name: String!
+  properties: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"A directed relationship between two nodes"
+type GraphEdge {
+  id: ID!
+  type: String!
+  sourceId: ID!
+  targetId: ID!
+  properties: JSON
+  weight: Float
+}
+
+"Traversal configuration input"
+input TraversalInput {
+  maxDepth: Int! = 3
+  edgeTypes: [String!]
+  nodeTypes: [String!]
+  limit: Int = 50
+}
+
+# --- Queries ---
+
+type Query {
+  "Get a single node by ID"
+  node(id: ID!): GraphNode
+
+  "Find all nodes of a given type with optional filters"
+  findByType(type: String!, filters: JSON): QueryResult!
+
+  "Find nodes related to a given node via a specific edge type"
+  findRelated(nodeId: ID!, edgeType: String!): QueryResult!
+
+  "Traverse the graph from a starting node"
+  traverse(startNodeId: ID!, options: TraversalInput!): QueryResult!
+
+  "Find the shortest path between two nodes"
+  shortestPath(sourceId: ID!, targetId: ID!): QueryResult!
+
+  "Full-text search across node names and properties"
+  search(term: String!, nodeTypes: [String!]): QueryResult!
+
+  "Get a statute by code and section"
+  statute(code: String!, section: String!): Statute
+
+  "Get all procedures for a case type in a jurisdiction"
+  procedures(caseType: String!, jurisdiction: String!): [Procedure!]!
+
+  "Get the version history for a statute"
+  statuteHistory(code: String!, section: String!): [Statute!]!
+}
+
+# --- Mutations ---
+
+type Mutation {
+  "Create a new node in the graph"
+  createNode(type: String!, name: String!, properties: JSON): GraphNode!
+
+  "Create an edge between two existing nodes"
+  createEdge(type: String!, sourceId: ID!, targetId: ID!, properties: JSON): GraphEdge!
+
+  "Delete a node and all its edges"
+  deleteNode(id: ID!): Boolean!
+
+  "Record a change to a statute (amendment, repeal, etc.)"
+  recordStatuteChange(
+    statuteId: ID!
+    changeType: String!
+    effectiveDate: DateTime!
+    summary: String!
+    newVersionId: ID
+  ): GraphEdge!
+}
+
+# --- Scalars ---
+
+scalar DateTime
+scalar JSON

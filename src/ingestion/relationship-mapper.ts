@@ -8,7 +8,7 @@
  * @module @justice-os/knowledge-graph/ingestion/relationship-mapper
  */
 
-import type { GraphEdge, EdgeType, GraphNode } from '../types';
+import type { GraphEdge, EdgeType, GraphNode, NodeType } from '../types';
 
 /** A discovered relationship between two entities */
 export interface DiscoveredRelationship {
@@ -24,22 +24,100 @@ export interface DiscoveredRelationship {
   evidence: string;
 }
 
+/** Rules that guide relationship inference */
+export interface MappingRule {
+  /** Source node type */
+  sourceType: NodeType;
+  /** Target node type */
+  targetType: NodeType;
+  /** Edge type to create */
+  edgeType: EdgeType;
+  /** Pattern or heuristic description */
+  pattern: string;
+}
+
 /**
  * RelationshipMapper identifies and creates edges between
  * entities in the knowledge graph.
+ *
+ * @example
+ * ```typescript
+ * const mapper = new RelationshipMapper();
+ * const relationships = await mapper.mapReferences(statutes);
+ * const edges = mapper.toEdges(relationships, 0.8);
+ * ```
  */
 export class RelationshipMapper {
+  /** Custom mapping rules */
+  private rules: MappingRule[] = [];
+
   /**
-   * Discover relationships between a set of graph nodes.
+   * Map cross-reference relationships (e.g., statute A references statute B).
+   *
+   * @param nodes - The statute or procedure nodes to analyze
+   * @returns Discovered REFERENCES relationships
+   */
+  async mapReferences(nodes: GraphNode[]): Promise<DiscoveredRelationship[]> {
+    // TODO: Scan node text properties for citation patterns
+    // TODO: Match citations to other nodes by code + section
+    throw new Error('Not implemented');
+  }
+
+  /**
+   * Map hierarchical relationships (e.g., chapter -> section -> subsection).
+   *
+   * @param nodes - Nodes to organize into a hierarchy
+   * @returns Discovered hierarchical relationships
+   */
+  async mapHierarchy(nodes: GraphNode[]): Promise<DiscoveredRelationship[]> {
+    // TODO: Parse section numbers to determine parent/child relationships
+    // TODO: Create appropriate edge types (CONTAINS, PART_OF)
+    throw new Error('Not implemented');
+  }
+
+  /**
+   * Map procedural relationships (e.g., procedure requires another procedure).
+   *
+   * @param nodes - Procedure and statute nodes
+   * @returns Discovered REQUIRES and FOR_CASE_TYPE relationships
+   */
+  async mapProcedures(nodes: GraphNode[]): Promise<DiscoveredRelationship[]> {
+    // TODO: Identify procedural dependencies between steps
+    // TODO: Link procedures to their applicable case types
+    throw new Error('Not implemented');
+  }
+
+  /**
+   * Discover relationships between a set of graph nodes using all strategies.
    *
    * @param nodes - The nodes to analyze for relationships
-   * @returns Discovered relationships with confidence scores
+   * @returns All discovered relationships with confidence scores
    */
   async discoverRelationships(nodes: GraphNode[]): Promise<DiscoveredRelationship[]> {
-    // TODO: Analyze cross-references between statutes
-    // TODO: Map procedure-to-statute dependencies
-    // TODO: Link resources to jurisdictions and case types
-    throw new Error('Not implemented');
+    const [references, hierarchy, procedures] = await Promise.all([
+      this.mapReferences(nodes),
+      this.mapHierarchy(nodes),
+      this.mapProcedures(nodes),
+    ]);
+    return [...references, ...hierarchy, ...procedures];
+  }
+
+  /**
+   * Validate discovered relationships against the graph schema.
+   *
+   * @param relationships - Relationships to validate
+   * @returns Array of validation error messages (empty if all valid)
+   */
+  validate(relationships: DiscoveredRelationship[]): string[] {
+    const errors: string[] = [];
+    for (const rel of relationships) {
+      if (!rel.sourceId) errors.push(`Relationship missing sourceId`);
+      if (!rel.targetId) errors.push(`Relationship missing targetId`);
+      if (rel.confidence < 0 || rel.confidence > 1) {
+        errors.push(`Invalid confidence ${rel.confidence} for ${rel.sourceId}->${rel.targetId}`);
+      }
+    }
+    return errors;
   }
 
   /**
