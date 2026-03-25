@@ -1,0 +1,29 @@
+{
+  "name": "@justice-os/knowledge-graph",
+  "version": "0.1.0",
+  "description": "Open graph database connecting laws, procedures, case types, resources, and jurisdictions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/",
+    "test": "jest",
+    "type-check": "tsc --noEmit",
+    "ingest": "ts-node scripts/ingest.ts"
+  },
+  "keywords": [
+    "justice",
+    "knowledge-graph",
+    "legal-data",
+    "neo4j",
+    "graphql"
+  ],
+  "author": "Justice OS Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dougdevitre/justice-knowledge-graph.git"
+  }
+}
